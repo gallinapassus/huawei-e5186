@@ -34,7 +34,7 @@ Use -t option to set an alternative address/hostname.
 
 ### Send SMS message
 
-```python3 huawei-e5186-http-client.py sendsms your_phone_number_here```
+```python3 huawei-e5186-http-client.py sendsms message your_phone_number_here```
 
 ### Reboot router
 
