@@ -147,12 +147,12 @@ class Hwcli:
                         def _prettyprint(item, lvl):
                             pad = ' '
                             if type(item) is not list:
-                                children = item.getchildren()
+                                children = list(item)
                                 if len(children) > 0: _prettyprint(children, lvl + 2)
                                 else: print('{}<{}>{}</{}>'.format(pad * lvl, item.tag, item.text if item.text is not None else '', item.tag))
                             else:
                                 for i in item:
-                                    children = i.getchildren()
+                                    children = list(i)
                                     if children != None: 
                                         print('{}<{}>'.format(pad * lvl, i.tag), end = '')
                                         if len(children) > 0:
