@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import http.client
 import requests
 import urllib
@@ -28,7 +30,7 @@ passwordSHA256 = None
 #
 # Version
 #
-version = '1.0.0'
+version = '1.0.1'
 
 class Hwcli:
 
@@ -52,7 +54,8 @@ class Hwcli:
     def apiPost(self, api = '', data = None):
         self._getSession()
         r = self.session.post(self.apiUrl(api), data = data)
-        if self.debug == True: print(r.url, '->', r.status_code)
+        if self.debug == True:
+            print(r.url, '->', r.status_code)
         arr = [
             '__RequestVerificationToken',
             '__RequestVerificationTokenone',
@@ -68,12 +71,14 @@ class Hwcli:
     def apiGet(self, api = ''):
         self._getSession()
         r = self.session.get(self.apiUrl(api))
-        if self.debug == True: print(r.url, '->', r.status_code)
+        if self.debug == True:
+            print(r.url, '->', r.status_code)
         return r
 
     def _getSession(self):
 
-        if self.token != None and self.sessionInfo != None: return
+        if self.token != None and self.sessionInfo != None:
+            return
 
         request = self.session.get('http://' + self.baseUrl + '/api/webserver/SesTokInfo')
 
@@ -83,14 +88,15 @@ class Hwcli:
             self.token = tree.findall('TokInfo')[0].text
         else:
             self.token = ''
-            if self.debug == True: print('Failed to get session token')
+            if self.debug == True:
+                print('Failed to get session token')
         if len(tree.findall('SesInfo')) > 0:
             self.sessionInfo = tree.findall('SesInfo')[0].text
         else:
             self.sessionInfo = ''
-            if self.debug == True: print('Failed to get session info')
+            if self.debug == True:
+                print('Failed to get session info')
  
-
     def login(self):
         self._getSession()
         self.session.headers.update({ 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -141,9 +147,9 @@ class Hwcli:
             for needle in matchingFields:
                 val = root.findall(needle)
                 if type(val) is list:
-                    if len(val) == 0: print('No matches for \'{}\''.format(needle))
+                    if len(val) == 0:
+                        print('No matches for \'{}\''.format(needle))
                     else:
-
                         def _prettyprint(item, lvl):
                             pad = ' '
                             if type(item) is not list:
@@ -217,24 +223,43 @@ class Hwcli:
         xml = '<?xml version="1.0" encoding="UTF-8"?>\n<request>\n <Control>1</Control>\n</request>'
         self.dumpXMLFields(fields, self.apiPost('/api/device/control', data = xml).content)
 
+    def apiShowMacFilter(self, fields = None):
+        self.dumpXMLFields(fields, self.apiGet('/api/security/mac-filter').content)
+
+    mac_filter_types = {
+        'disabled': 1,
+        'allow':    2,
+        'deny':     3
+    }
+
+    def apiSetMacFilter(self, mac_list, mode):
+        xml = '<?xml version="1.0" encoding="UTF-8"?><request><policy>' + str(mode) + '</policy><macfilters>\n'
+        for mac_address in mac_list:
+            xml += '<macfilter><value>' + mac_address + '</value><status>1</status></macfilter>\n'
+        xml += '</macfilters></request>\n'
+        if self.debug:
+            print('xml: ' + xml)
+        r = self.apiPost('/api/security/mac-filter', str(xml))
+
 def parseArgumentsAndRun():
     global passwordSHA256
     global version
 
     parser = argparse.ArgumentParser()
 
-    subParsers = parser.add_subparsers(title='commands', dest = 'commands')
+    subParsers = parser.add_subparsers(title = 'commands', dest = 'commands')
 
     # Configure 'main parser'                                            
-    parser.add_argument('-v', '--version', action='version', version = '%(prog)s {}'.format(version), help = 'Display version number')
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s {}'.format(version), help = 'Display version number')
     parser.add_argument('-d', '--debug', action = 'store_true', default = False, help = 'Show debug information.')
-    parser.add_argument('-t', metavar = 'address', type=str, default = '192.168.8.1', help = 'Target hostname or IP-address')
-    parser.add_argument('-s', metavar = 'sha256', type=str, default = None, help = 'Router\'s password as SHA256 hexdigest.')
+    parser.add_argument('-t', metavar = 'address', type = str, default = '192.168.8.1', help = 'Target hostname or IP-address')
+    parser.add_argument('-s', metavar = 'sha256', type = str, default = None, help = 'Router\'s password as SHA256 hexdigest.')
 
     # Create 'sub parsers'
     show_parser   = subParsers.add_parser('show', help = 'Show router information.')
     reboot_parser = subParsers.add_parser('reboot', help = 'Reboot router.')
     send_parser   = subParsers.add_parser('sendsms', help = 'Send SMS message.')
+    filter_parser = subParsers.add_parser('mac-filter', help = 'Set MAC filtering.')
 
     # Config 'show'
     showSubParsers = show_parser.add_subparsers(title='item', dest='item', help = 'Available items')
@@ -251,20 +276,25 @@ def parseArgumentsAndRun():
         'sms-config':    ('SMS config.', 'apiSmsConfig'),
         'global-config': ('Global config.', 'apiGlobalConfigXml'),
         'device-config': ('Device config.', 'apiDeviceConfigXml'),
+        'mac-filter':    ('MAC Filter.', 'apiShowMacFilter'),
         }
 
     for k in showarr:
         prsr = showSubParsers.add_parser(k, help = showarr[k][0])
         prsr.add_argument('fields', nargs = '*', type = str, metavar = 'FILTER', help = 'XML XPath spec.')
-
  
     # Config 'sendsms'
     send_parser.add_argument('message', type = str, help = 'Message.')
     send_parser.add_argument('phone_number', nargs = '+', type = str, help = 'Recipient phone number.')
 
+    # Config 'macfilter'
+    filter_parser.add_argument('type', type = str, help = 'disable, allow, deny')
+    filter_parser.add_argument('mac', nargs = '+', type = str, help = 'MAC address.')
+
     args = parser.parse_args()
 
-    if args.commands == None: parser.print_help()
+    if args.commands == None:
+        parser.print_help()
     else:
         if args.s != None: 
             pwd = args.s
@@ -275,7 +305,8 @@ def parseArgumentsAndRun():
                 pwd = passwordSHA256
 
         hw = Hwcli(baseUrl = args.t, password = pwd)
-        if args.debug == True: hw.debug = True
+        if args.debug == True:
+            hw.debug = True
         hw.login()
         if args.commands == 'show':
             try:
@@ -286,6 +317,11 @@ def parseArgumentsAndRun():
             hw.apiSendSms(message = args.message, recipients = args.phone_number)
         elif args.commands == 'reboot':
             hw.apiReboot()
+        elif args.commands == "mac-filter":
+            try:
+                hw.apiSetMacFilter(args.mac, Hwcli.mac_filter_types[args.type])
+            except KeyError as e:
+                show_parser.print_help()
 
 if __name__ == '__main__':
     try:
