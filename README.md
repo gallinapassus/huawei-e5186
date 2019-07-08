@@ -32,6 +32,10 @@ Use -t option to set an alternative address/hostname.
 
 ```python3 huawei-e5186-http-client.py show traffic TotalUpload TotalDownload```
 
+### Show MAC address blacklist/whitelist
+
+```python3 huawei-e5186-http-client.py show mac-filter```
+
 ### Send SMS message
 
 ```python3 huawei-e5186-http-client.py sendsms message your_phone_number_here```
@@ -39,3 +43,13 @@ Use -t option to set an alternative address/hostname.
 ### Reboot router
 
 ```python3 huawei-e5186-http-client.py reboot```
+
+### Blacklist/whitelist MAC address(-es)
+
+```python3 huawei-e5186-http-client.py mac-filter deny 1:2:3:4:5:6 1:2:3:4:5:7```
+
+```python3 huawei-e5186-http-client.py mac-filter allow 1:2:3:4:5:6 1:2:3:4:5:7```
+
+**NB!** You must specify the full list of MAC addresses to blacklist/whitelist.
+E.g. if you have 1:2:3:4:5:6 blacklisted then calling `deny 1:2:3:4:5:7` will remove 1:2:3:4:5:6
+and add 1:2:3:4:5:7 to the blacklist.
