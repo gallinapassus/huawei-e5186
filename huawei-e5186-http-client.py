@@ -54,13 +54,13 @@ class Hwcli:
     def apiPost(self, api = '', data = None):
         self._getSession()
         r = self.session.post(self.apiUrl(api), data = data)
-        if self.debug == True:
+        if self.debug:
             print(r.url, '->', r.status_code)
         arr = [
             '__RequestVerificationToken',
             '__RequestVerificationTokenone',
             '__RequestVerificationTokentwo'
-            ]
+        ]
         for k in arr:
             try:
                 self.session.headers.update({ k: r.headers[k] })
@@ -71,7 +71,7 @@ class Hwcli:
     def apiGet(self, api = ''):
         self._getSession()
         r = self.session.get(self.apiUrl(api))
-        if self.debug == True:
+        if self.debug:
             print(r.url, '->', r.status_code)
         return r
 
@@ -88,13 +88,13 @@ class Hwcli:
             self.token = tree.findall('TokInfo')[0].text
         else:
             self.token = ''
-            if self.debug == True:
+            if self.debug:
                 print('Failed to get session token')
         if len(tree.findall('SesInfo')) > 0:
             self.sessionInfo = tree.findall('SesInfo')[0].text
         else:
             self.sessionInfo = ''
-            if self.debug == True:
+            if self.debug:
                 print('Failed to get session info')
  
     def login(self):
@@ -305,9 +305,9 @@ def parseArgumentsAndRun():
                 pwd = passwordSHA256
 
         hw = Hwcli(baseUrl = args.t, password = pwd)
-        if args.debug == True:
-            hw.debug = True
+        hw.debug = args.debug
         hw.login()
+
         if args.commands == 'show':
             try:
                 getattr(hw, showarr[args.item][1])(args.fields)
