@@ -43,4 +43,5 @@ Use -t option to set an alternative address/hostname.
 ### Turn mobile data on or off
 
 ```python3 huawei-e5186-http-client.py data on```
+
 ```python3 huawei-e5186-http-client.py data off```
