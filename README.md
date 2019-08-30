@@ -39,3 +39,8 @@ Use -t option to set an alternative address/hostname.
 ### Reboot router
 
 ```python3 huawei-e5186-http-client.py reboot```
+
+### Turn mobile data on or off
+
+```python3 huawei-e5186-http-client.py data on```
+```python3 huawei-e5186-http-client.py data off```

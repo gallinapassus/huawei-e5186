@@ -28,7 +28,7 @@ passwordSHA256 = None
 #
 # Version
 #
-version = '1.0.0'
+version = '1.1.0'
 
 class Hwcli:
 
@@ -217,6 +217,13 @@ class Hwcli:
         xml = '<?xml version="1.0" encoding="UTF-8"?>\n<request>\n <Control>1</Control>\n</request>'
         self.dumpXMLFields(fields, self.apiPost('/api/device/control', data = xml).content)
 
+    def apiDataSwitch(self,on=True):
+        if on:
+            xml = '<?xml version="1.0" encoding="UTF-8"?>\n<request>\n <dataswitch>1</dataswitch>\n</request>'
+        else:
+            xml = '<?xml version="1.0" encoding="UTF-8"?>\n<request>\n <dataswitch>0</dataswitch>\n</request>'
+        self.dumpXMLFields(None, self.apiPost('/api/dialup/mobile-dataswitch', data = xml).content)
+
 def parseArgumentsAndRun():
     global passwordSHA256
     global version
@@ -233,6 +240,7 @@ def parseArgumentsAndRun():
 
     # Create 'sub parsers'
     show_parser   = subParsers.add_parser('show', help = 'Show router information.')
+    data_parser   = subParsers.add_parser('data', help = 'Enable or disable mobile data.')
     reboot_parser = subParsers.add_parser('reboot', help = 'Reboot router.')
     send_parser   = subParsers.add_parser('sendsms', help = 'Send SMS message.')
 
@@ -257,6 +265,16 @@ def parseArgumentsAndRun():
         prsr = showSubParsers.add_parser(k, help = showarr[k][0])
         prsr.add_argument('fields', nargs = '*', type = str, metavar = 'FILTER', help = 'XML XPath spec.')
 
+    # Config 'data'
+    dataSubParsers = data_parser.add_subparsers(title='item', dest='item', help = 'Available items')
+    dataarr = {
+        'on':           ('Mobile data on.', True),
+        'off':           ('Mobile data off.', False),
+        }
+
+    for k in dataarr:
+        prsr = dataSubParsers.add_parser(k, help = dataarr[k][0])
+        prsr.add_argument('fields', nargs = '*', type = str, metavar = 'FILTER', help = 'XML XPath spec.')
  
     # Config 'sendsms'
     send_parser.add_argument('message', type = str, help = 'Message.')
@@ -286,6 +304,8 @@ def parseArgumentsAndRun():
             hw.apiSendSms(message = args.message, recipients = args.phone_number)
         elif args.commands == 'reboot':
             hw.apiReboot()
+        elif args.commands == 'data':
+            hw.apiDataSwitch(dataarr[args.item][1])
 
 if __name__ == '__main__':
     try:
