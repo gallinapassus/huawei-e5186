@@ -52,7 +52,8 @@ class Hwcli:
     def apiPost(self, api = '', data = None):
         self._getSession()
         r = self.session.post(self.apiUrl(api), data = data)
-        if self.debug == True: print(r.url, '->', r.status_code)
+        if self.debug:
+            print(r.url, '->', r.status_code)
         arr = [
             '__RequestVerificationToken',
             '__RequestVerificationTokenone',
@@ -68,12 +69,14 @@ class Hwcli:
     def apiGet(self, api = ''):
         self._getSession()
         r = self.session.get(self.apiUrl(api))
-        if self.debug == True: print(r.url, '->', r.status_code)
+        if self.debug:
+            print(r.url, '->', r.status_code)
         return r
 
     def _getSession(self):
 
-        if self.token != None and self.sessionInfo != None: return
+        if self.token != None and self.sessionInfo != None:
+            return
 
         request = self.session.get('http://' + self.baseUrl + '/api/webserver/SesTokInfo')
 
@@ -83,13 +86,14 @@ class Hwcli:
             self.token = tree.findall('TokInfo')[0].text
         else:
             self.token = ''
-            if self.debug == True: print('Failed to get session token')
+            if self.debug:
+                print('Failed to get session token')
         if len(tree.findall('SesInfo')) > 0:
             self.sessionInfo = tree.findall('SesInfo')[0].text
         else:
             self.sessionInfo = ''
-            if self.debug == True: print('Failed to get session info')
- 
+            if self.debug:
+                print('Failed to get session info')
 
     def login(self):
         self._getSession()
@@ -141,9 +145,9 @@ class Hwcli:
             for needle in matchingFields:
                 val = root.findall(needle)
                 if type(val) is list:
-                    if len(val) == 0: print('No matches for \'{}\''.format(needle))
+                    if len(val) == 0:
+                        print('No matches for \'{}\''.format(needle))
                     else:
-
                         def _prettyprint(item, lvl):
                             pad = ' '
                             if type(item) is not list:
@@ -224,6 +228,24 @@ class Hwcli:
             xml = '<?xml version="1.0" encoding="UTF-8"?>\n<request>\n <dataswitch>0</dataswitch>\n</request>'
         self.dumpXMLFields(None, self.apiPost('/api/dialup/mobile-dataswitch', data = xml).content)
 
+    def apiShowMacFilter(self, fields = None):
+        self.dumpXMLFields(fields, self.apiGet('/api/security/mac-filter').content)
+
+    mac_filter_types = {
+        'disabled': 1,
+        'allow':    2,
+        'deny':     3
+    }
+
+    def apiSetMacFilter(self, mac_list, mode):
+        xml = '<?xml version="1.0" encoding="UTF-8"?><request><policy>' + str(mode) + '</policy><macfilters>\n'
+        for mac_address in mac_list:
+            xml += '<macfilter><value>' + mac_address + '</value><status>1</status></macfilter>\n'
+        xml += '</macfilters></request>\n'
+        if self.debug:
+            print('xml: ' + xml)
+        r = self.apiPost('/api/security/mac-filter', str(xml))
+
 def parseArgumentsAndRun():
     global passwordSHA256
     global version
@@ -243,6 +265,7 @@ def parseArgumentsAndRun():
     data_parser   = subParsers.add_parser('data', help = 'Enable or disable mobile data.')
     reboot_parser = subParsers.add_parser('reboot', help = 'Reboot router.')
     send_parser   = subParsers.add_parser('sendsms', help = 'Send SMS message.')
+    filter_parser = subParsers.add_parser('mac-filter', help = 'Set MAC filtering.')
 
     # Config 'show'
     showSubParsers = show_parser.add_subparsers(title='item', dest='item', help = 'Available items')
@@ -259,6 +282,7 @@ def parseArgumentsAndRun():
         'sms-config':    ('SMS config.', 'apiSmsConfig'),
         'global-config': ('Global config.', 'apiGlobalConfigXml'),
         'device-config': ('Device config.', 'apiDeviceConfigXml'),
+        'mac-filter':    ('MAC Filter.', 'apiShowMacFilter'),
         }
 
     for k in showarr:
@@ -269,13 +293,17 @@ def parseArgumentsAndRun():
     dataSubParsers = data_parser.add_subparsers(title='item', dest='item', help = 'Available items')
     dataarr = {
         'on':           ('Mobile data on.', True),
-        'off':           ('Mobile data off.', False),
+        'off':          ('Mobile data off.', False),
         }
 
     for k in dataarr:
         prsr = dataSubParsers.add_parser(k, help = dataarr[k][0])
         prsr.add_argument('fields', nargs = '*', type = str, metavar = 'FILTER', help = 'XML XPath spec.')
  
+    # Config 'macfilter'
+    filter_parser.add_argument('type', type = str, help = 'disable, allow, deny')
+    filter_parser.add_argument('mac', nargs = '+', type = str, help = 'MAC address.')
+
     # Config 'sendsms'
     send_parser.add_argument('message', type = str, help = 'Message.')
     send_parser.add_argument('phone_number', nargs = '+', type = str, help = 'Recipient phone number.')
@@ -293,8 +321,9 @@ def parseArgumentsAndRun():
                 pwd = passwordSHA256
 
         hw = Hwcli(baseUrl = args.t, password = pwd)
-        if args.debug == True: hw.debug = True
+        hw.debug = args.debug 
         hw.login()
+
         if args.commands == 'show':
             try:
                 getattr(hw, showarr[args.item][1])(args.fields)
@@ -306,6 +335,11 @@ def parseArgumentsAndRun():
             hw.apiReboot()
         elif args.commands == 'data':
             hw.apiDataSwitch(dataarr[args.item][1])
+        elif args.commands == "mac-filter":
+            try:
+                hw.apiSetMacFilter(args.mac, Hwcli.mac_filter_types[args.type])
+            except KeyError as e:
+                show_parser.print_help()
 
 if __name__ == '__main__':
     try:
